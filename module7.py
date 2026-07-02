@@ -22,8 +22,6 @@ dorsais_txt_path = pooch.retrieve(
 with open(dorsais_txt_path, "r", encoding="utf-8") as f:
     dorsais_txt_content = f.read()
 
-print(dorsais_txt_content)
-
 # =========================
 # DADOS: topografia (netCDF)
 # =========================
@@ -40,7 +38,6 @@ topografia_nc_path = pooch.retrieve(
 
 # Carrega a malha de topografia como um DataArray
 topografia = xr.load_dataarray(topografia_nc_path)
-print(topografia)
 
 # =========================
 # DADOS: magnetic_anomaly (netCDF)
@@ -109,19 +106,6 @@ with open(dorsais_txt_path, "r", encoding="utf-8") as file:
             latitude=slice(lat_min, lat_max),
         )
 
-        fig = pygmt.Figure()
-        fig.grdimage(
-            grid=dorsal_topografia,
-            projection="M20c",
-            cmap="geo",
-            frame=True,
-            shading=True,
-        )
-        fig.colorbar()
-
-        fig.savefig(f"{arquivo}_topografia.png")
-        print(f"Saved {arquivo}_topografia.png")
-
         # =====================================================
         # MAGNETIC ANOMALY (-180° to 180° longitude)
         # =====================================================
@@ -131,15 +115,50 @@ with open(dorsais_txt_path, "r", encoding="utf-8") as file:
             latitude=slice(lat_min, lat_max),
         )
 
-        fig = pygmt.Figure()
-        fig.grdimage(
-            grid=dorsal_magnetica,
-            projection="M20c",
-            cmap="polar",      # choose another colormap if desired
-            frame=True,
-            shading=True,
-        )
-        fig.colorbar()
+        # -------------------------
+        # ALL FIGURES TOGETHER
+        # -------------------------
 
-        fig.savefig(f"{arquivo}_anomalia_magnetica.png")
-        print(f"Saved {arquivo}_anomalia_magnetica.png")
+        fig = pygmt.Figure()
+
+        with fig.subplot(
+            nrows=2,
+            ncols=1,
+            figsize=("15c", "30c"),
+            margins="0.5c",
+        ):
+
+            # -------------------------
+            # Topography
+            # -------------------------
+            with fig.set_panel(panel=[0, 0]):
+
+                fig.grdimage(
+                    grid=dorsal_topografia,
+                    projection="M12c",
+                    cmap="geo",
+                    frame=["af", '+t"Topography"'],
+                    shading=True,
+                )
+
+                # No colorbar
+
+            # -------------------------
+            # Magnetic anomaly
+            # -------------------------
+            with fig.set_panel(panel=[1, 0]):
+
+                fig.grdimage(
+                    grid=dorsal_magnetica,
+                    projection="M12c",
+                    cmap="polar",
+                    frame=["af", '+t"Magnetic anomaly"'],
+                    shading=True,
+                )
+
+                fig.colorbar(
+                    position="JBC",
+                    frame="af+lMagnetic anomaly",
+                )
+
+        fig.savefig(f"{arquivo}.png")
