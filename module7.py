@@ -22,9 +22,7 @@ dorsais_txt_path = pooch.retrieve(
 with open(dorsais_txt_path, "r", encoding="utf-8") as f:
     dorsais_txt_content = f.read()
 
-print("=== DORSais.txt ===")
 print(dorsais_txt_content)
-
 
 # =========================
 # DADOS: topografia (netCDF)
@@ -40,33 +38,27 @@ topografia_nc_path = pooch.retrieve(
     path=cache_path,
 )
 
-print("\n=== TOPOGRAFIA (arquivo baixado) ===")
-print(topografia_nc_path)
-
 # Carrega a malha de topografia como um DataArray
 topografia = xr.load_dataarray(topografia_nc_path)
-# print(topografia)
+print(topografia)
 
-dorsal = topografia.sel(
-	longitude=slice(0, 30), 
-	latitude=slice(-60, -45),
+# =========================
+# DADOS: magnetic_anomaly (netCDF)
+# =========================
+magnetic_anomaly_nc_url = "https://drive.google.com/uc?export=download&id=14lrKMRQVUkBgeiwJ-QkK2ib4M47FZmf4"
+magnetic_anomaly_nc_md5 = "md5:6162e664ed36fc7684e0cd7b69960e15"
+magnetic_anomaly_nc_filename = "magnetic_anomaly.nc"
+
+magnetic_anomaly_nc_path = pooch.retrieve(
+    url=magnetic_anomaly_nc_url,
+    known_hash=magnetic_anomaly_nc_md5,
+    fname=magnetic_anomaly_nc_filename,
+    path=cache_path,
 )
 
-# Cria o mapa da topografia com o PyGMT
-fig = pygmt.Figure()
-fig.grdimage(
-	dorsal,
-	projection="M20c",
-	cmap="geo",
-	frame=True,
-	shading=True,
-)
-fig.colorbar()
-# fig.show()
-fig.savefig("map.png")
-print("Saved map.png")
-
-
+# Carrega a malha de magnetic_anomaly como um DataArray
+magnetic_anomaly = xr.load_dataarray(magnetic_anomaly_nc_path)
+magnetic_anomaly = magnetic_anomaly.sortby("latitude")
 
 # Read each region from dorsais.txt
 # Read each region from dorsais.txt
@@ -87,30 +79,6 @@ with open(dorsais_txt_path, "r", encoding="utf-8") as file:
         lat_min = float(lat_min)
         lat_max = float(lat_max)
 
-        # Convert longitudes from [-180, 180] to [0, 360]
-        if lon_min < 0:
-            lon_min += 360
-
-        if lon_max < 0:
-            lon_max += 360
-
-        # Slice the topography
-        dorsal = topografia.sel(
-            longitude=slice(lon_min, lon_max),
-            latitude=slice(lat_min, lat_max),
-        )
-
-        # Create the figure
-        fig = pygmt.Figure()
-        fig.grdimage(
-            grid=dorsal,
-            projection="M20c",
-            cmap="geo",
-            frame=True,
-            shading=True,
-        )
-        fig.colorbar()
-
         # Safe filename
         arquivo = (
             nome.lower()
@@ -123,5 +91,55 @@ with open(dorsais_txt_path, "r", encoding="utf-8") as file:
                 .replace("ú", "u")
         )
 
-        fig.savefig(f"{arquivo}.png")
-        print(f"Saved {arquivo}.png")
+        # =====================================================
+        # TOPOGRAPHY (0° to 360° longitude)
+        # =====================================================
+
+        lon_min_topo = lon_min
+        lon_max_topo = lon_max
+
+        if lon_min_topo < 0:
+            lon_min_topo += 360
+
+        if lon_max_topo < 0:
+            lon_max_topo += 360
+
+        dorsal_topografia = topografia.sel(
+            longitude=slice(lon_min_topo, lon_max_topo),
+            latitude=slice(lat_min, lat_max),
+        )
+
+        fig = pygmt.Figure()
+        fig.grdimage(
+            grid=dorsal_topografia,
+            projection="M20c",
+            cmap="geo",
+            frame=True,
+            shading=True,
+        )
+        fig.colorbar()
+
+        fig.savefig(f"{arquivo}_topografia.png")
+        print(f"Saved {arquivo}_topografia.png")
+
+        # =====================================================
+        # MAGNETIC ANOMALY (-180° to 180° longitude)
+        # =====================================================
+
+        dorsal_magnetica = magnetic_anomaly.sel(
+            longitude=slice(lon_min, lon_max),
+            latitude=slice(lat_min, lat_max),
+        )
+
+        fig = pygmt.Figure()
+        fig.grdimage(
+            grid=dorsal_magnetica,
+            projection="M20c",
+            cmap="polar",      # choose another colormap if desired
+            frame=True,
+            shading=True,
+        )
+        fig.colorbar()
+
+        fig.savefig(f"{arquivo}_anomalia_magnetica.png")
+        print(f"Saved {arquivo}_anomalia_magnetica.png")
