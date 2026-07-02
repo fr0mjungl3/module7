@@ -62,7 +62,7 @@ fig = pygmt.Figure()
 
 with fig.subplot(
     nrows=2,
-    ncols=4,                  # one column per ridge
+    ncols=4,
     figsize=("60c", "30c"),
     margins="0.5c",
 ):
@@ -125,6 +125,27 @@ with fig.subplot(
                     shading=True,
                 )
 
+
+                # INSET global
+                with fig.inset(
+                    position="jTL+w3.5c+o0c",
+                ):
+
+                    fig.coast(
+                        region="g",
+                        projection="W0/3c",
+                        land="gray85",
+                        water="lightblue",
+                        borders=1,
+                        frame="g",
+                    )
+
+                    fig.plot(
+                        x=[lon_min_topo, lon_max_topo, lon_max_topo, lon_min_topo, lon_min_topo],
+                        y=[lat_min, lat_min, lat_max, lat_max, lat_min],
+                        pen="2p,red",
+                    )
+
             # -------------------------
             # Magnetic anomaly
             # -------------------------
@@ -138,7 +159,7 @@ with fig.subplot(
                 fig.grdimage(
                     grid=dorsal_magnetica,
                     projection="M12c",
-                    cmap=True,   # <-- IMPORTANT FIX
+                    cmap=True,
                     frame="af",
                     shading=True,
                 )
