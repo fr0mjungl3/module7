@@ -1,3 +1,10 @@
+# Modulo 7
+# Problema: Visualização das anomalias magnéticas de dorsais
+# Gabriel Neves Nantes da Silva
+# nUSP 8583541
+
+# =========================
+
 import pooch
 import xarray as xr
 import matplotlib.pyplot as plt
