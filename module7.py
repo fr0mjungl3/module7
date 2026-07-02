@@ -58,107 +58,94 @@ magnetic_anomaly = xr.load_dataarray(magnetic_anomaly_nc_path)
 magnetic_anomaly = magnetic_anomaly.sortby("latitude")
 
 # Read each region from dorsais.txt
-# Read each region from dorsais.txt
-with open(dorsais_txt_path, "r", encoding="utf-8") as file:
-    for linha in file:
+fig = pygmt.Figure()
 
-        # Ignore empty lines
-        linha = linha.strip()
-        if not linha:
-            continue
+with fig.subplot(
+    nrows=2,
+    ncols=4,                  # one column per ridge
+    figsize=("60c", "30c"),
+    margins="0.5c",
+):
 
-        # Split the line
-        lon_min, lon_max, lat_min, lat_max, nome = linha.split(",")
+    with open(dorsais_txt_path, "r", encoding="utf-8") as file:
+        for i, linha in enumerate(file):
 
-        # Convert coordinates to float
-        lon_min = float(lon_min)
-        lon_max = float(lon_max)
-        lat_min = float(lat_min)
-        lat_max = float(lat_max)
+            # Ignore empty lines
+            linha = linha.strip()
+            if not linha:
+                continue
 
-        # Safe filename
-        arquivo = (
-            nome.lower()
-                .replace(" ", "_")
-                .replace("â", "a")
-                .replace("á", "a")
-                .replace("ã", "a")
-                .replace("í", "i")
-                .replace("ó", "o")
-                .replace("ú", "u")
-        )
+            # Split the line
+            lon_min, lon_max, lat_min, lat_max, nome = linha.split(",")
 
-        # =====================================================
-        # TOPOGRAPHY (0° to 360° longitude)
-        # =====================================================
+            # Convert coordinates to float
+            lon_min = float(lon_min)
+            lon_max = float(lon_max)
+            lat_min = float(lat_min)
+            lat_max = float(lat_max)
 
-        lon_min_topo = lon_min
-        lon_max_topo = lon_max
+            # =====================================================
+            # TOPOGRAPHY (0° to 360° longitude)
+            # =====================================================
 
-        if lon_min_topo < 0:
-            lon_min_topo += 360
+            lon_min_topo = lon_min
+            lon_max_topo = lon_max
 
-        if lon_max_topo < 0:
-            lon_max_topo += 360
+            if lon_min_topo < 0:
+                lon_min_topo += 360
 
-        dorsal_topografia = topografia.sel(
-            longitude=slice(lon_min_topo, lon_max_topo),
-            latitude=slice(lat_min, lat_max),
-        )
+            if lon_max_topo < 0:
+                lon_max_topo += 360
 
-        # =====================================================
-        # MAGNETIC ANOMALY (-180° to 180° longitude)
-        # =====================================================
+            dorsal_topografia = topografia.sel(
+                longitude=slice(lon_min_topo, lon_max_topo),
+                latitude=slice(lat_min, lat_max),
+            )
 
-        dorsal_magnetica = magnetic_anomaly.sel(
-            longitude=slice(lon_min, lon_max),
-            latitude=slice(lat_min, lat_max),
-        )
+            # =====================================================
+            # MAGNETIC ANOMALY (-180° to 180° longitude)
+            # =====================================================
 
-        # -------------------------
-        # ALL FIGURES TOGETHER
-        # -------------------------
-
-        fig = pygmt.Figure()
-
-        with fig.subplot(
-            nrows=2,
-            ncols=1,
-            figsize=("15c", "30c"),
-            margins="0.5c",
-        ):
+            dorsal_magnetica = magnetic_anomaly.sel(
+                longitude=slice(lon_min, lon_max),
+                latitude=slice(lat_min, lat_max),
+            )
 
             # -------------------------
             # Topography
             # -------------------------
-            with fig.set_panel(panel=[0, 0]):
+
+            with fig.set_panel(panel=[0, i]):
 
                 fig.grdimage(
                     grid=dorsal_topografia,
                     projection="M12c",
                     cmap="geo",
-                    frame=["af", '+t"Topography"'],
+                    frame=["af", f'+t{nome}'],
                     shading=True,
                 )
-
-                # No colorbar
 
             # -------------------------
             # Magnetic anomaly
             # -------------------------
-            with fig.set_panel(panel=[1, 0]):
+
+            with fig.set_panel(panel=[1, i]):
+                vmin = float(dorsal_magnetica.min())
+                vmax = float(dorsal_magnetica.max())
+
+                pygmt.makecpt(cmap="polar", series=[vmin, vmax])
 
                 fig.grdimage(
                     grid=dorsal_magnetica,
                     projection="M12c",
-                    cmap="polar",
-                    frame=["af", '+t"Magnetic anomaly"'],
+                    cmap=True,   # <-- IMPORTANT FIX
+                    frame="af",
                     shading=True,
                 )
 
                 fig.colorbar(
                     position="JBC",
-                    frame="af+lMagnetic anomaly",
+                    frame="af+lMagnetic anomaly (nT)",
                 )
 
-        fig.savefig(f"{arquivo}.png")
+    fig.savefig("dorsais_comparacao.png")
